@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polarsteps Trip Text Extractor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .content {
+            flex: 1;
+        }
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e3e3e3;
+            text-align: center;
+            color: #666;
+        }
+        footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+        .description-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e3e3e3;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .description-box a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .help-button {
+            display: inline-block;
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .help-button:hover {
+            background-color: #e67e22;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 700px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+        .modal h3 {
+            margin-top: 20px;
+            color: #2c3e50;
+        }
+        .modal ol {
+            padding-left: 20px;
+        }
+        .modal li {
+            margin-bottom: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .upload-container {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .upload-container:hover {
+            background-color: #e9ecef;
+        }
+        #file-input {
+            display: none;
+        }
+        label {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        label:hover {
+            background-color: #2980b9;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #27ae60;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #file-list {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            margin: 5px 0;
+            background-color: #f1f1f1;
+            border-radius: 3px;
+        }
+        .remove-file {
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+    <h1>Polarsteps Trip Text Extractor 🗺️🤖</h1>
+    
+    <div class="description-box">
+        <p>Extract texts from <a href="https://www.polarsteps.com/" target="_blank">Polarsteps</a> trips to use them for example as knowledge base for AI LLM tools.</p>
+        <p>Learn more about why I created this tool and about writing (more like dictating 🎙️) your travel diary with AI 🤖 in my <a href="https://medium.com/@filipobornik/using-ai-to-transform-your-travel-notes-into-a-captivating-diary-b862cc9f65c9" target="_blank">Medium article on transforming travel notes with AI</a>.</p>
+    </div>
+    
+    <p>Upload one or more trip.json files from Polarsteps to extract trip title, step names and descriptions into one text file.</p>
+    <p><button id="help-button" class="help-button" title="How to download your Polarsteps data">How to get trip.json files from my Polarsteps trips?</button></p>
+    
+    <div class="upload-container">
+        <label for="file-input">Choose Files</label>
+        <input type="file" id="file-input" accept=".json" multiple>
+        <p>Or drag and drop files here</p>
+    </div>
+    
+    <div id="file-list"></div>
+    
+    <button id="process-button" disabled>Process Files</button>
+    
+    <div id="status" style="display: none;"></div>
+
+    <footer>
+        <p>Created by <a href="https://filipobornik.cz" target="_blank">Filip Oborník</a> | <a href="https://github.com/FilipObornik/Polarsteps-Trip-Text-Extractor" target="_blank">View source code on GitHub</a></p>
+        <p>Did the tool or article help you? 😇 I will appreciate your support 🙏</p>
+        <a style="scale: 4;" href="https://www.buymeacoffee.com/filipobornik" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>    </footer>
+    </div>
+    
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>How to Download Your Trips Data from Polarsteps</h2>
+            
+            <p>To extract trip.json files from your Polarsteps trips, you need to request to download all of your personal data for your Polarsteps account. Follow these steps:</p>
+            
+            <h3>Using the Polarsteps Website</h3>
+            <ol>
+                <li>Go to <a href="https://www.polarsteps.com/" target="_blank">Polarsteps.com</a> and log into your account</li>
+                <li>In the navigation on the top of the website, click on profile picture with </li>
+                <li>Click on "Profile settings"</li>
+                <li>Click on "Account" in the left menu</li>
+                <li>Find section "Download my data"</li>
+                <li>Request data download by clicking on "download a copy of your data." link.</li>
+            </ol>
+            
+            <h3>Using the Polarsteps Mobile App</h3>
+            <ol>
+                <li>Open the Polarsteps app on your smartphone</li>
+                <li>Click on settings button (ozubene kolo)</li>
+                <li>Click on "Account" item</li>
+                <li>In the "Privacy" section, click on "Download my data" button</li>
+            </ol>            
+            <h3>How to get trip.json files</h3>
+            <ol>
+                <li>After few minutes, you will receive e-mail from Polarsteps with link to download your data.</li>
+                <li>Download the .zip file and extract it</li>
+                <li>Navigate to folder "trip"</li>
+                <li>Inside you see folders named as your trips you recorded in the past</li>
+                <li>Open folder with trip you want to get texts from</li>
+                <li>In the folder, you will find "trip.json" file</li>
+                <li>That is the file you are looking for. Upload it to this tool</li>
+            </ol>
+            
+            <p><strong>Note:</strong>You can upload multiple trip.json files at the same time.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        const fileInput = document.getElementById('file-input');
+        const uploadContainer = document.querySelector('.upload-container');
+        const fileList = document.getElementById('file-list');
+        const processButton = document.getElementById('process-button');
+        const statusDiv = document.getElementById('status');
+        const helpButton = document.getElementById('help-button');
+        const helpModal = document.getElementById('helpModal');
+        const closeButton = document.querySelector('.close');
+        
+        // Store the uploaded files
+        let uploadedFiles = [];
+        
+        // Add event listeners
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadContainer.addEventListener('dragover', handleDragOver);
+        uploadContainer.addEventListener('dragleave', handleDragLeave);
+        uploadContainer.addEventListener('drop', handleDrop);
+        processButton.addEventListener('click', processFiles);
+        helpButton.addEventListener('click', showHelp);
+        closeButton.addEventListener('click', closeHelp);
+        window.addEventListener('click', function(event) {
+            if (event.target === helpModal) {
+                closeHelp();
+            }
+        });
+        
+        // Show help modal
+        function showHelp() {
+            helpModal.style.display = 'block';
+        }
+        
+        // Close help modal
+        function closeHelp() {
+            helpModal.style.display = 'none';
+        }
+        
+        // Add event listeners
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadContainer.addEventListener('dragover', handleDragOver);
+        uploadContainer.addEventListener('dragleave', handleDragLeave);
+        uploadContainer.addEventListener('drop', handleDrop);
+        processButton.addEventListener('click', processFiles);
+        
+        // Handle file selection from input
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            addFiles(files);
+        }
+        
+        // Handle drag over
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadContainer.style.backgroundColor = '#e3e3e3';
+        }
+        
+        // Handle drag leave
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadContainer.style.backgroundColor = '#f8f9fa';
+        }
+        
+        // Handle drop
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadContainer.style.backgroundColor = '#f8f9fa';
+            
+            const files = event.dataTransfer.files;
+            addFiles(files);
+        }
+        
+        // Add files to the list
+        function addFiles(files) {
+            // Track filenames for adding suffixes
+            const filenameCounts = {};
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Only accept JSON files
+                if (!file.type.match('application/json') && !file.name.endsWith('.json')) {
+                    showStatus(`${file.name} is not a JSON file.`, 'error');
+                    continue;
+                }
+                
+                // Get base filename
+                const baseFilename = file.name;
+                
+                // Add with numbered suffix if needed
+                let displayName = baseFilename;
+                if (baseFilename in filenameCounts) {
+                    filenameCounts[baseFilename]++;
+                    displayName = `${baseFilename} (${filenameCounts[baseFilename]})`;
+                } else {
+                    filenameCounts[baseFilename] = 0;
+                }
+                
+                // Store the original file but with a unique ID
+                const uniqueId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                const fileWithId = file;
+                fileWithId.uniqueId = uniqueId;
+                fileWithId.displayName = displayName;
+                
+                uploadedFiles.push(fileWithId);
+                
+                // Create file item in the list
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${displayName} (${formatFileSize(file.size)})</span>
+                    <span class="remove-file" data-id="${uniqueId}">✕</span>
+                `;
+                fileList.appendChild(fileItem);
+                
+                // Add event listener to remove button
+                fileItem.querySelector('.remove-file').addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-id');
+                    removeFile(fileId);
+                });
+            }
+            
+            // Enable or disable the process button
+            processButton.disabled = uploadedFiles.length === 0;
+        }
+        
+        // Remove file from the list
+        function removeFile(fileId) {
+            uploadedFiles = uploadedFiles.filter(file => file.uniqueId !== fileId);
+            
+            // Remove file item from the list
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                if (item.querySelector('.remove-file').getAttribute('data-id') === fileId) {
+                    fileList.removeChild(item);
+                }
+            });
+            
+            // Enable or disable the process button
+            processButton.disabled = uploadedFiles.length === 0;
+        }
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes < 1024) {
+                return bytes + ' bytes';
+            } else if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(2) + ' KB';
+            } else {
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+        }
+        
+        // Process all uploaded files
+        async function processFiles() {
+            if (uploadedFiles.length === 0) {
+                showStatus('Please upload at least one JSON file.', 'error');
+                return;
+            }
+            
+            try {
+                processButton.disabled = true;
+                showStatus('Processing files...', '');
+                
+                let allContent = '';
+                
+                // Process each file
+                for (const file of uploadedFiles) {
+                    const content = await extractTripData(file);
+                    allContent += `# File: ${file.displayName || file.name}\n\n`;
+                    allContent += content + '\n\n' + '='.repeat(80) + '\n\n';
+                }
+                
+                // Download the combined result
+                downloadTextFile(allContent, 'trip_notes.txt');
+                
+                showStatus('All files processed successfully!', 'success');
+            } catch (error) {
+                console.error('Error processing files:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                processButton.disabled = false;
+            }
+        }
+        
+        // Extract trip data from a single file
+        function extractTripData(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // Extract trip title and all_steps array
+                        const tripName = data.name || 'Trip';
+                        const allSteps = data.all_steps || [];
+                        
+                        let content = `## Trip: ${tripName}\n\n${'='.repeat(50)}\n\n`;
+                        
+                        // Process each step
+                        allSteps.forEach(step => {
+                            let name = step.name || '';
+                            const description = step.description || '';
+                            
+                            // If name is empty, use display_name instead
+                            if (!name) {
+                                name = step.display_name || '';
+                            }
+                            
+                            // Add name as title and description as paragraph
+                            if (name) {
+                                content += `### ${name}\n\n`;
+                            }
+                            if (description) {
+                                content += `${description}\n\n`;
+                            }
+                            
+                            // Add a separator between entries
+                            content += '---\n\n';
+                        });
+                        
+                        resolve(content);
+                    } catch (error) {
+                        reject(new Error(`Failed to process ${file.name}: ${error.message}`));
+                    }
+                };
+                
+                reader.onerror = function() {
+                    reject(new Error(`Failed to read ${file.name}`));
+                };
+                
+                reader.readAsText(file);
+            });
+        }
+        
+        // Download text file
+        function downloadTextFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            // Reset classes
+            statusDiv.className = '';
+            
+            // Only add class if type is not empty
+            if (type && type.trim() !== '') {
+                statusDiv.classList.add(type);
+            }
+        }
+    </script>
+</body>
+</html>
